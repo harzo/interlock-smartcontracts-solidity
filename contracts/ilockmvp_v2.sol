@@ -23,10 +23,17 @@ contract InterlockNetwork is
     uint256 public transferCooldownThreshold;
     mapping(address => uint256) private _transferCooldowns;
 
+    address public pauser;
+
     /**
      * @dev Emitted when a transfer is attempted while the sender is on cooldown.
      */
     error InterlockTransferCooldown(address receiver);
+
+    /**
+     * @dev The caller account is not authorized to perform an operation.
+     */
+    error InterlockUnauthorizedAccount(address account);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -36,6 +43,13 @@ contract InterlockNetwork is
     modifier verifyCooldown(address from) {
         if (_transferCooldowns[from] >= block.timestamp) {
             revert InterlockTransferCooldown(from);
+        }
+        _;
+    }
+
+    modifier onlyPauser() {
+        if (owner() != _msgSender() && pauser != _msgSender()) {
+            revert InterlockUnauthorizedAccount(_msgSender());
         }
         _;
     }
@@ -71,11 +85,15 @@ contract InterlockNetwork is
         transferCooldownThreshold = threshold;
     }
 
-    function pause() public onlyOwner {
+    function setPauser(address _pauser) public onlyOwner {
+        pauser = _pauser;
+    }
+
+    function pause() public onlyPauser {
         _pause();
     }
 
-    function unpause() public onlyOwner {
+    function unpause() public onlyPauser {
         _unpause();
     }
 
@@ -114,5 +132,6 @@ contract InterlockNetwork is
     /// v2 - minus 32 bytes for transferCooldownDuration slot
     /// v2 - minus 32 bytes for transferCooldownThreshold slot
     /// v2 - minus 32 bytes for _transferCooldowns slot
-    uint256[97] public __gap;
+    /// v2 - minus 20+12 bytes for pauser slot
+    uint256[96] public __gap;
 }

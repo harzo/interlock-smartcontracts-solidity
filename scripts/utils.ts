@@ -117,7 +117,7 @@ export async function proposeUpgradeWithDefenderInteractive(contractName: string
     console.log('Upgrading contract...')
 
     const upgradeProposal = await proposeUpgradeWithDefender(contractName, proxyAddress)
-    console.log(`${contractName} upgrade proposal:\n${upgradeProposal}`)
+    console.log(`${contractName} upgrade proposal:\n${JSON.stringify(upgradeProposal)}`)
 
     if (await confirm('\nDo you want to verify contract implementation? [y/N] ')) {
       const implementationAddress = await getImplementationAddress(ethers.provider, proxyAddress)

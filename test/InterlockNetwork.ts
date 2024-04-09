@@ -11,11 +11,12 @@ describe(`${contractName}`, () => {
   let ilock: InterlockNetwork
   let deployer: SignerWithAddress
   let initialOwner: SignerWithAddress
+  let pauser: SignerWithAddress
   let testAccount: SignerWithAddress
   let snapshot: number
 
   before(async () => {
-    ;[deployer, initialOwner, testAccount] = await ethers.getSigners()
+    ;[deployer, initialOwner, pauser, testAccount] = await ethers.getSigners()
     ilock = await deployProxy(contractName, deployer, [initialOwner.address])
   })
 
@@ -136,51 +137,84 @@ describe(`${contractName}`, () => {
   })
 
   context('Pausing', async function () {
-    it('should unpause', async function () {
-      await ilock.connect(initialOwner).unpause()
-      expect(await ilock.paused()).to.equal(false)
+    context('pauser setup', async function () {
+      it('should revert pauser setup if not the owner', async function () {
+        await expect(ilock.connect(pauser).setPauser(pauser.address)).to.be.revertedWithCustomError(
+          ilock,
+          'OwnableUnauthorizedAccount'
+        )
+      })
+
+      it('should setup pauser', async function () {
+        await ilock.connect(initialOwner).setPauser(pauser.address)
+        expect(await ilock.pauser()).to.be.equal(pauser.address)
+      })
     })
 
-    it('should pause', async function () {
-      await ilock.connect(initialOwner).unpause()
-      await ilock.connect(initialOwner).pause()
-      expect(await ilock.paused()).to.equal(true)
+    context('switching on/off', async function () {
+      beforeEach(async function () {
+        await ilock.connect(initialOwner).setPauser(pauser.address)
+      })
+
+      it('should unpause as owner', async function () {
+        await ilock.connect(initialOwner).unpause()
+        expect(await ilock.paused()).to.equal(false)
+      })
+
+      it('should pause as owner', async function () {
+        await ilock.connect(initialOwner).unpause()
+        await ilock.connect(initialOwner).pause()
+        expect(await ilock.paused()).to.equal(true)
+      })
+
+      it('should unpause as pauser', async function () {
+        await ilock.connect(pauser).unpause()
+        expect(await ilock.paused()).to.equal(false)
+      })
+
+      it('should pause as pauser', async function () {
+        await ilock.connect(pauser).unpause()
+        await ilock.connect(pauser).pause()
+        expect(await ilock.paused()).to.equal(true)
+      })
+
+      it('should revert pause if not authorized', async function () {
+        await expect(ilock.connect(testAccount).pause()).to.be.revertedWithCustomError(
+          ilock,
+          'InterlockUnauthorizedAccount'
+        )
+      })
+
+      it('should revert unpause if not authorized', async function () {
+        await expect(ilock.connect(testAccount).unpause()).to.be.revertedWithCustomError(
+          ilock,
+          'InterlockUnauthorizedAccount'
+        )
+      })
     })
 
-    it('should transfer if not paused', async function () {
-      await ilock.connect(initialOwner).unpause()
-      const amount = ethers.parseEther('1')
-      await ilock.connect(initialOwner).transferFrom(await ilock.getAddress(), testAccount.address, amount)
-      expect(await ilock.balanceOf(testAccount.address)).to.equal(amount)
-    })
+    context('transfers', async function () {
+      it('should transfer if not paused', async function () {
+        await ilock.connect(initialOwner).unpause()
+        const amount = ethers.parseEther('1')
+        await ilock.connect(initialOwner).transferFrom(await ilock.getAddress(), testAccount.address, amount)
+        expect(await ilock.balanceOf(testAccount.address)).to.equal(amount)
+      })
 
-    it('should revert pause if not the owner', async function () {
-      await expect(ilock.connect(testAccount).pause()).to.be.revertedWithCustomError(
-        ilock,
-        'OwnableUnauthorizedAccount'
-      )
-    })
+      it('should revert transferFrom if paused', async function () {
+        const amount = ethers.parseEther('1')
+        await expect(
+          ilock.connect(initialOwner).transferFrom(await ilock.getAddress(), testAccount.address, amount)
+        ).to.be.revertedWithCustomError(ilock, 'EnforcedPause')
+      })
 
-    it('should revert unpause if not the owner', async function () {
-      await expect(ilock.connect(testAccount).unpause()).to.be.revertedWithCustomError(
-        ilock,
-        'OwnableUnauthorizedAccount'
-      )
-    })
-
-    it('should revert transferFrom if paused', async function () {
-      const amount = ethers.parseEther('1')
-      await expect(
-        ilock.connect(initialOwner).transferFrom(await ilock.getAddress(), testAccount.address, amount)
-      ).to.be.revertedWithCustomError(ilock, 'EnforcedPause')
-    })
-
-    it('should revert transfer if paused', async function () {
-      const amount = ethers.parseEther('1')
-      await expect(ilock.connect(initialOwner).transfer(testAccount.address, amount)).to.be.revertedWithCustomError(
-        ilock,
-        'EnforcedPause'
-      )
+      it('should revert transfer if paused', async function () {
+        const amount = ethers.parseEther('1')
+        await expect(ilock.connect(initialOwner).transfer(testAccount.address, amount)).to.be.revertedWithCustomError(
+          ilock,
+          'EnforcedPause'
+        )
+      })
     })
   })
 

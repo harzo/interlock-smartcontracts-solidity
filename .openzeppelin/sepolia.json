@@ -17,7 +17,7 @@
             "offset": 0,
             "slot": "0",
             "type": "t_array(t_uint256)100_storage",
-            "contract": "InterlockNetwork",
+            "contract": "InterlockNetworkV1",
             "src": "contracts/ilockmvp_v1.sol:69"
           }
         ],
