@@ -26,6 +26,14 @@ const contractsArgs: Record<
       },
       proxyAdminOwner: '0xf0Da5D820b6d0B9383Bb8e3ED7D3144b32B1349F'
     }
+  },
+  baseSepolia: {
+    InterlockNetwork: {
+      params: {
+        initialOwner: '0x7F0bc15E7D1e5c0a59a68d6F23F02933a051E7B4'
+      },
+      proxyAdminOwner: '0x7F0bc15E7D1e5c0a59a68d6F23F02933a051E7B4'
+    }
   }
 }
 
